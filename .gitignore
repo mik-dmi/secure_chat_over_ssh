@@ -1,3 +1,5 @@
 /keys/
 
 private_key
+
+.env
