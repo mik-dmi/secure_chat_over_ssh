@@ -14,6 +14,12 @@ import (
 
 type SSHHandler struct {
 }
+type chatMessages struct {
+	message string
+	time    string
+	userTag string
+}
+
 type User struct {
 	session      ssh.Session
 	nameTag      string
@@ -40,6 +46,18 @@ func (u *User) RemoveUserFromMap() {
 	clients.Delete(u.connectionID)
 }
 
+type Room struct {
+	user   User
+	roomId string
+}
+
+func (r *Room) CreateRoom() {
+
+}
+
+func (r *Room) JoinRoom(idOfRoom) {
+
+}
 func (h *SSHHandler) handleSSHSession(session ssh.Session) {
 	oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
 	if err != nil {
@@ -49,7 +67,7 @@ func (h *SSHHandler) handleSSHSession(session ssh.Session) {
 	term := term.NewTerminal(session, "> ")
 	term.Write([]byte("Welcome to secure chat!!!\n What's your Name Tag?\n"))
 	nameTag, err := term.ReadLine()
-	term.Write([]byte("What do you want to join?\n- Chat Room (cmd: CR)\n- Chat One On One (cmd: COOO)\n"))
+	term.Write([]byte("What do you want to join?\n- Chat Room (cmd: CR)\n- Create a One On One Room (cmd: CCOOO)\n- Join a One On One Room (cmd: JCOOO)\n"))
 	userChoice, err := term.ReadLine()
 	if err != nil {
 		log.Fatal(err)
@@ -60,13 +78,25 @@ func (h *SSHHandler) handleSSHSession(session ssh.Session) {
 			term.Write([]byte("Joined a chat room"))
 
 			return
-		case "COOO":
+		case "CCOOO":
 			//fmt.Println("Local Addr : ", session.LocalAddr().String())
-			user := NewUser(session, nameTag)
-
+			user := NewUser(session, nameTag) //create new user
+			user.AddUserToMap()               // add to a connection
 			fmt.Println("SSH connection established successfully!")
 			fmt.Println("Print user info: ", user)
-			return
+		case "CJOOO":
+			//fmt.Println("Local Addr : ", session.LocalAddr().String())
+			user := NewUser(session, nameTag) //create new user
+			user.AddUserToMap()               // add to a connection
+			term.Write([]byte("Whats the ID of the room you want to join?"))
+			idOfRoom, err := term.ReadLine()
+			if err != nil {
+				log.Fatal(err)
+			}
+			room.JoinRoom(idOfRoom)
+			fmt.Println("SSH connection established successfully!")
+			fmt.Println("Print user info: ", user)
+
 		default:
 			term.Write([]byte("Wrong command, try gain:\n"))
 			userChoice, err = term.ReadLine()
