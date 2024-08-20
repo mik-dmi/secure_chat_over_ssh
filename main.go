@@ -20,9 +20,9 @@ type chatMessages struct {
 	userTag string
 }
 type User struct {
-	session      ssh.Session
-	nameTag      string
-	connectionID string
+	session     ssh.Session
+	nameTag     string
+	currentRoom string
 }
 
 var clients sync.Map
@@ -33,16 +33,16 @@ func NewUser(session ssh.Session, userName string) *User {
 		log.Fatal(err)
 	}
 	return &User{
-		session:      session,
-		nameTag:      userName,
-		connectionID: randomID,
+		session:     session,
+		nameTag:     userName,
+		currentRoom: randomID,
 	}
 }
 func (u *User) AddUserToMap() {
-	clients.Store(u.connectionID, u)
+	clients.Store(u.currentRoom, u)
 }
 func (u *User) RemoveUserFromMap() {
-	clients.Delete(u.connectionID)
+	clients.Delete(u.currentRoom)
 }
 
 type Room struct {
@@ -53,11 +53,12 @@ type Room struct {
 
 func (r *Room) CreateRoom() {
 }
-func (r *Room) JoinRoom(rooms []Room, idOfRoom string, term *term.Terminal) {
+func (u *User) JoinRoom(rooms []Room, idOfRoom string, term *term.Terminal) {
 	for _, room := range rooms {
 		if room.roomId == idOfRoom {
-			*r = room
-			term.Write([]byte("Room found!"))
+			u.currentRoom = room.roomId
+			msg := fmt.Sprintf("Room found! Wecome to %s room (Room ID: %s)\n", room.roomName, room.roomId)
+			term.Write([]byte(msg))
 		}
 	}
 }
@@ -94,7 +95,7 @@ func (h *SSHHandler) handleSSHSession(session ssh.Session) {
 			user.AddUserToMap()               // add to a connection
 			fmt.Println("SSH connection established successfully!")
 			fmt.Println("Print user info: ", user)
-		case "CJOOO":
+		case "JCOOO":
 			//fmt.Println("Local Addr : ", session.LocalAddr().String())
 			user := NewUser(session, nameTag) //create new user
 			user.AddUserToMap()               // add to a connection
@@ -103,7 +104,7 @@ func (h *SSHHandler) handleSSHSession(session ssh.Session) {
 			if err != nil {
 				log.Fatal(err)
 			}
-			rooms.JoinRoom(rooms, idOfRoom, term)
+			user.JoinRoom(rooms, idOfRoom, term)
 			fmt.Println("SSH connection established successfully!")
 			fmt.Println("Print user info: ", user)
 
