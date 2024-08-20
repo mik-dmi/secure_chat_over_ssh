@@ -19,7 +19,6 @@ type chatMessages struct {
 	time    string
 	userTag string
 }
-
 type User struct {
 	session      ssh.Session
 	nameTag      string
@@ -47,18 +46,30 @@ func (u *User) RemoveUserFromMap() {
 }
 
 type Room struct {
-	user   User
-	roomId string
+	users    []User
+	roomId   string
+	roomName string
 }
 
 func (r *Room) CreateRoom() {
-
 }
-
-func (r *Room) JoinRoom(idOfRoom) {
-
+func (r *Room) JoinRoom(rooms []Room, idOfRoom string, term *term.Terminal) {
+	for _, room := range rooms {
+		if room.roomId == idOfRoom {
+			*r = room
+			term.Write([]byte("Room found!"))
+		}
+	}
 }
 func (h *SSHHandler) handleSSHSession(session ssh.Session) {
+	rooms := []Room{}
+
+	newRoom := Room{
+		users:    []User{},
+		roomId:   "000000",
+		roomName: "General Room",
+	}
+	rooms = append(rooms, newRoom)
 	oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
 	if err != nil {
 		panic(err)
@@ -76,7 +87,6 @@ func (h *SSHHandler) handleSSHSession(session ssh.Session) {
 		switch userChoice {
 		case "CR":
 			term.Write([]byte("Joined a chat room"))
-
 			return
 		case "CCOOO":
 			//fmt.Println("Local Addr : ", session.LocalAddr().String())
@@ -93,7 +103,7 @@ func (h *SSHHandler) handleSSHSession(session ssh.Session) {
 			if err != nil {
 				log.Fatal(err)
 			}
-			room.JoinRoom(idOfRoom)
+			rooms.JoinRoom(rooms, idOfRoom, term)
 			fmt.Println("SSH connection established successfully!")
 			fmt.Println("Print user info: ", user)
 
@@ -103,20 +113,14 @@ func (h *SSHHandler) handleSSHSession(session ssh.Session) {
 			if err != nil {
 				log.Fatal(err)
 			}
-
 		}
-
 	}
-
 }
-
 func NewSSHHandler() *SSHHandler {
 	return &SSHHandler{}
 }
-
 func main() {
 	sshPort := ":2222"
-
 	handler := NewSSHHandler()
 	server := &ssh.Server{
 		Addr:    sshPort,
@@ -132,7 +136,6 @@ func main() {
 			return cfg
 		},
 	}
-
 	b, err := os.ReadFile("./keys/private_key")
 	if err != nil {
 		log.Fatal(err)
