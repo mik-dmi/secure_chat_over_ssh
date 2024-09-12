@@ -28,14 +28,15 @@ type User struct {
 var clients sync.Map
 
 func NewUser(session ssh.Session, userName string) *User {
-	randomID, err := shortid.Generate()
+	/*randomID, err := shortid.Generate()
+
 	if err != nil {
 		log.Fatal(err)
-	}
+	}*/
 	return &User{
 		session:     session,
 		nameTag:     userName,
-		currentRoom: randomID,
+		currentRoom: "000000",
 	}
 }
 func (u *User) AddUserToMap() {
@@ -46,12 +47,21 @@ func (u *User) RemoveUserFromMap() {
 }
 
 type Room struct {
-	users    []User
-	roomId   string
-	roomName string
+	users          []User
+	roomId         string
+	roomName       string
+	messageHistory []string
 }
 
-func (r *Room) CreateRoom() {
+func (r *Room) CreateRoom(term *term.Terminal) {
+	randomID, err := shortid.Generate()
+
+	if err != nil {
+		log.Fatal(err)
+	}
+	r.roomId = randomID
+	term.Write([]byte("Whats the ID of the room you want to join?"))
+
 }
 func (u *User) JoinRoom(rooms []Room, idOfRoom string, term *term.Terminal) {
 	for _, room := range rooms {
@@ -89,13 +99,14 @@ func (h *SSHHandler) handleSSHSession(session ssh.Session) {
 		case "CR":
 			term.Write([]byte("Joined a chat room"))
 			return
-		case "CCOOO":
+		case "CCOOO": // creat one on one room
 			//fmt.Println("Local Addr : ", session.LocalAddr().String())
 			user := NewUser(session, nameTag) //create new user
-			user.AddUserToMap()               // add to a connection
+			newRoom.CreateRoom(term)
+			user.AddUserToMap() // add to a connection
 			fmt.Println("SSH connection established successfully!")
 			fmt.Println("Print user info: ", user)
-		case "JCOOO":
+		case "JCOOO": // join a room
 			//fmt.Println("Local Addr : ", session.LocalAddr().String())
 			user := NewUser(session, nameTag) //create new user
 			user.AddUserToMap()               // add to a connection
@@ -123,7 +134,7 @@ func NewSSHHandler() *SSHHandler {
 func main() {
 	sshPort := ":2222"
 	handler := NewSSHHandler()
-	server := &ssh.Server{
+	server := &ssh.Server{ //defining ssh server
 		Addr:    sshPort,
 		Handler: handler.handleSSHSession,
 		PublicKeyHandler: (func(ctx ssh.Context, key ssh.PublicKey) bool {
