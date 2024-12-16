@@ -33,13 +33,21 @@ type User struct {
 	currentRoom string
 }
 
+func roomExists(rooms []Room, selectedRoom Room) bool {
+	for _, room := range rooms {
+		if room.roomId == selectedRoom.roomId {
+			return true
+		}
+	}
+	return false
+}
+
 var clients sync.Map
 
 // funtion to help populate a room for test purposes
 func populateRoom(session ssh.Session, room *Room) {
 	// Create random users
 	for i := 0; i < rand.Intn(10)+1; i++ { // Generate 1 to 10 users
-
 		nameTag := fmt.Sprintf("#%04d", rand.Intn(10000)) // Random 4-digit tag
 		user := &User{session: session, nameTag: nameTag, currentRoom: room.roomId}
 		room.users = append(room.users, user)
@@ -80,37 +88,37 @@ func (r *Room) AddUserToGroupChat(user *User, term *term.Terminal) {
 	term.Write([]byte("\033[H\033[2J"))
 	term.Write([]byte("\n"))
 	for _, message := range r.messageHistory {
+		term.Write([]byte(r.roomId))
 		displayedMessage := fmt.Sprintf("%s at %s: %s\n ", message.userTag, message.time, message.message)
 		term.Write([]byte(displayedMessage))
 	}
-
 }
-func (r *Room) CreateRoom(user *User, rooms []Room, term *term.Terminal) Room { // --> CHANGE rooms []Room   --< pass as pointer cause its needed to add something to the slice
+func (r *Room) CreateRoom(user *User, rooms []Room, term *term.Terminal) { // --> CHANGE rooms []Room   --< pass as pointer cause its needed to add something to the slice
 
 	for {
 		term.Write([]byte("What is the name of the room you want to create?"))
 		nameOfRoom, err := term.ReadLine()
 		if err != nil {
 			term.Write([]byte("Wrong command, try gain:\n"))
-
-		} else {
-			for _, room := range rooms {
-				if nameOfRoom == room.roomName {
-					term.Write([]byte("Fail creating room, a room that name already exists\n"))
-					continue
-				} else {
-					randomID, err := shortid.Generate()
-					if err != nil {
-						log.Fatal(err)
-					}
-					r.roomId = randomID
-					r.roomName = nameOfRoom
-					r.users = append(r.users, user)
-
-					return room
-				}
-			}
 		}
+
+		if roomExists(rooms, *r) {
+			term.Write([]byte("Fail creating room, a room that name already exists\n"))
+		} else {
+
+			randomID, err := shortid.Generate()
+			if err != nil {
+				log.Fatal(err)
+			}
+			r.roomId = randomID
+			r.roomName = nameOfRoom
+			r.users = append(r.users, user)
+
+			fmt.Printf("Id of the rrom just created  %v", r.roomId)
+
+			return
+		}
+
 	}
 }
 func (u *User) JoinRoom(rooms []Room, term *term.Terminal) Room {
@@ -133,14 +141,14 @@ func (u *User) JoinRoom(rooms []Room, term *term.Terminal) Room {
 func (h *SSHHandler) handleSSHSession(session ssh.Session) {
 	rooms := []Room{}
 
-	newRoom := Room{
+	generalRoom := Room{
 		users:    []*User{},
 		roomId:   "000000",
 		roomName: "General Room",
 	}
 	//populate a room to test
-	populateRoom(session, &newRoom)
-	rooms = append(rooms, newRoom)
+	populateRoom(session, &generalRoom)
+	rooms = append(rooms, generalRoom)
 	oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
 	if err != nil {
 		panic(err)
@@ -152,8 +160,25 @@ func (h *SSHHandler) handleSSHSession(session ssh.Session) {
 	term.Write([]byte("What do you want to join?\n- Chat Room (cmd: CR)\n- Create a One On One Room (cmd: CCOOO)\n- Join a One On One Room (cmd: JCOOO)\n"))
 	userChoice, err := term.ReadLine()
 	if err != nil {
-		log.Fatal(err)Chat(user, term)
+		log.Fatal(err)
+	}
+	for {
+		switch userChoice {
+		case "CR":
+			term.Write([]byte("Joined a chat room"))
+			return
+		case "CCOOO": // creat one on one room
+			//fmt.Println("Local Addr : ", session.LocalAddr().String())
+			user := NewUser(session, nameTag) //create new user
+			newRoom := Room{}
+			newRoom.CreateRoom(user, rooms, term) // ------->> CHANGE --> rooms must be pass as a pointer
+			fmt.Printf(newRoom.roomId)
+			newRoom.AddUserToGroupChat(user, term)
 
+			userChoice, err = term.ReadLine()
+			if err != nil {
+				log.Fatal(err)
+			}
 			user.AddUserToMap() // add to a connection
 			fmt.Println("SSH connection established successfully!")
 			fmt.Println("Print user info: ", user)
@@ -167,22 +192,8 @@ func (h *SSHHandler) handleSSHSession(session ssh.Session) {
 			fmt.Println("SSH connection established successfully!")
 			fmt.Println("Print user info: ", user)
 		default:
-	}
-	for {
-		switch userChoice {
-		case "CR":
-			term.Write([]byte("Joined a chat room"))
-			return
-		case "CCOOO": // creat one on one room
-			//fmt.Println("Local Addr : ", session.LocalAddr().String())
-			user := NewUser(session, nameTag)             //create new user
-			room := newRoom.CreateRoom(user, rooms, term) // ------->> CHANGE --> rooms must be pass as a pointer
-			room.AddUserToGroup
-			term.Write([]byte("Wrong command, try gain:\n"))
-			userChoice, err = term.ReadLine()
-			if err != nil {
-				log.Fatal(err)
-			}
+			term.Write([]byte("try again"))
+
 		}
 	}
 }
@@ -206,7 +217,7 @@ func main() {
 			return cfg
 		},
 	}
-	b, err := os.ReadFile("./keys/private_key")
+	b, err := os.ReadFile("../keys/private_key")
 	if err != nil {
 		log.Fatal(err)
 	}
