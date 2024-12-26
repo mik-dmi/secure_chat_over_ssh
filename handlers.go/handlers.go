@@ -50,12 +50,15 @@ func (h *SSHHandler) HandleSSHSession(session ssh.Session) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	term.Write([]byte("What do you want to join?\n- Chat Room (cmd: CR)\n- Create a One On One Room (cmd: CCOOO)\n- Join a One On One Room (cmd: JCOOO)\n"))
-	userChoice, err := term.ReadLine()
-	if err != nil {
-		log.Fatal(err)
-	}
+	fmt.Println("Print in  main : ", user.UserTag)
+
 	for {
+
+		term.Write([]byte("What do you want to join?\n- Chat Room (cmd: CR)\n- Create a One On One Room (cmd: CCOOO)\n- Join a One On One Room (cmd: JCOOO)\n"))
+		userChoice, err := term.ReadLine()
+		if err != nil {
+			log.Fatal(err)
+		}
 		switch userChoice {
 		case "CR":
 			term.Write([]byte("Joined a chat room"))
@@ -66,17 +69,14 @@ func (h *SSHHandler) HandleSSHSession(session ssh.Session) {
 			newRoom := h.RoomManager.CreateRoom(user, term) // ------->> CHANGE --> rooms must be pass as a pointer
 			user.CurrentRoomName = newRoom.RoomName
 			h.RoomManager.GetIntoAGroupChat(term, newRoom)
-			chat.WriteMessageToChat(term, newRoom, user.UserTag)
-			userChoice, err = term.ReadLine()
+			h.RoomManager.WriteMessageToChat(term, newRoom, user.UserTag)
 
-			fmt.Println("SSH connection established successfully!")
-			fmt.Println("Print user info: ", user)
 		case "JCOOO": // join a room
 			//fmt.Println("Local Addr : ", session.LocalAddr().String())
 			room = h.RoomManager.JoinRoom(user, term)
 			h.RoomManager.GetIntoAGroupChat(term, room)
-			fmt.Println("SSH connection established successfully!")
-			fmt.Println("Print user info: ", user)
+			h.RoomManager.WriteMessageToChat(term, room, user.UserTag)
+
 		default:
 			term.Write([]byte("try again"))
 		}

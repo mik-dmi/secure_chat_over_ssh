@@ -14,7 +14,7 @@ import (
 type Room struct {
 	RoomName       string
 	Users          []*User
-	MessageHistory []UserMessage
+	MessageHistory []*UserMessage
 }
 
 type RoomManager struct {
@@ -96,18 +96,20 @@ func (rm *RoomManager) ListRooms() []*Room {
 
 func (rm *RoomManager) JoinRoom(user *User, term *term.Terminal) *Room {
 	for {
-		term.Write([]byte("Whats the ID of the room you want to join?"))
+		term.Write([]byte("What's the ID of the room you want to join?\n"))
 		idOfRoom, err := term.ReadLine()
 		if err != nil {
-			log.Fatal(err)
+			log.Printf("Error reading input: %v", err)
+			continue
 		}
 		room, ok := rm.GetRoomByID(idOfRoom)
 		if !ok {
-			term.Write([]byte(fmt.Sprintf("The room ID %v does not exists", idOfRoom)))
+			term.Write([]byte(fmt.Sprintf("The room ID %v does not exist\n", idOfRoom)))
 			continue
 		}
-
-		msg := fmt.Sprintf("Room found! Wecome to %s room (Room ID: %s)\n", room.RoomName, idOfRoom)
+		// Add the user to the room's user list
+		room.Users = append(room.Users, user)
+		msg := fmt.Sprintf("Room found! Welcome to %s room (Room ID: %s)\n", room.RoomName, idOfRoom)
 		term.Write([]byte(msg))
 		return room
 	}
@@ -134,7 +136,8 @@ func (rm *RoomManager) CreateRoom(user *User, term *term.Terminal) *Room { // --
 			room := &Room{
 				RoomName: nameOfRoom,
 
-				Users: []*User{user},
+				Users:          []*User{user},
+				MessageHistory: []*UserMessage{},
 			}
 
 			rm.Rooms.Store(RoomID, room)
@@ -147,13 +150,32 @@ func (r *Room) UpdateRoomChat(userMessage string, userTag string) {
 	currentTime := time.Now()
 	formattedMessageTime := currentTime.Format("15:04")
 	for _, user := range r.Users {
-		user.Term.Write([]byte(fmt.Sprintf("%s: %s %s", formattedMessageTime, user.UserTag, userMessage)))
-		//add the message  to the chat history obj
+		if user.UserTag != userTag {
+			user.Term.Write([]byte(fmt.Sprintf("%s at %s: %s\n", userTag, formattedMessageTime, userMessage)))
+			//add the message  to the chat history obj
+		}
 	}
 
-	r.MessageHistory = append(r.MessageHistory, UserMessage{
+	r.MessageHistory = append(r.MessageHistory, &UserMessage{
 		Message: userMessage,
 		Time:    formattedMessageTime,
 		UserTag: userTag,
 	})
+}
+
+func (rm *RoomManager) WriteMessageToChat(term *term.Terminal, room *Room, userTag string) {
+
+	for {
+		userMessage, err := term.ReadLine()
+		if err != nil {
+			log.Fatal(err)
+		}
+		if userMessage == "exit" {
+			term.Write([]byte("Left the room \n\n\n"))
+			// STILL NEED to take out the user of the room map and so on
+		}
+		fmt.Println("Print: \n", userTag)
+		room.UpdateRoomChat(userMessage, userTag)
+
+	}
 }
