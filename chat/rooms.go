@@ -3,6 +3,7 @@ package chat
 import (
 	"fmt"
 	"log"
+	"secure_chat_over_ssh/utils"
 
 	"sync"
 	"time"
@@ -164,7 +165,8 @@ func (r *Room) UpdateRoomChat(userMessage string, userTag string) {
 		}
 		return true // Continue iteration
 	})
-
+	r.messagesMu.Lock()
+	defer r.messagesMu.Unlock()
 	r.MessageHistory = append(r.MessageHistory, &UserMessage{
 		Message: userMessage,
 		Time:    formattedMessageTime,
@@ -182,14 +184,20 @@ func (room *Room) WriteMessageToChat(term *term.Terminal, user *User) {
 			return
 		}
 		if userMessage == "exit" {
-			term.Write([]byte("---- Left the room -------- \n\n\n"))
+			term.Write([]byte("---- Left the room -------- \n"))
+			utils.ClearUserTerminal(term)
 			// STILL NEED to take out the user of the room map and so on
 			userMessage = fmt.Sprintf("user %s : left the room\n", user.UserTag)
 			room.Users.Delete(user.UserTag)
+
 			user.CurrentRoomName = ""
+			room.UpdateRoomChat(userMessage, user.UserTag)
+			return
+
 		}
 		if userMessage == "show_all_chatroom_users" {
 			room.ShowAllUserInRoom(user.Term)
+			continue
 		}
 
 		room.UpdateRoomChat(userMessage, user.UserTag)

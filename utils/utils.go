@@ -1,52 +1,12 @@
 package utils
 
-import (
-	"fmt"
-	"secure_chat_over_ssh/chat"
+import "golang.org/x/term"
 
-	"github.com/gliderlabs/ssh"
-	"golang.org/x/term"
-)
-
-func NewUser(session ssh.Session, UsersManager *chat.UsersManager, term *term.Terminal) (*chat.User, error) {
-	var userTag string
-	for {
-		term.Write([]byte("Enter a unique user tag:\n"))
-		line, err := term.ReadLine()
-		if err != nil {
-			err = fmt.Errorf("error reading user tag: %s", err)
-			return nil, err
-		}
-		userTag = line
-		//log.Printf(" 1 - userTag is: %s", userTag)
-
-		// Validate userTag (non-empty, alphanumeric, etc.)
-		if len(userTag) == 0 {
-			term.Write([]byte("User tag cannot be empty. Try again:\n"))
-			continue
-		}
-		if len(userTag) > 40 { // Example max length check
-			term.Write([]byte("User tag must be 20 characters or less. Try again:\n"))
-			continue
-		}
-
-		// Check if userTag already exists
-		_, ok := UsersManager.Users.Load(userTag)
-		if ok {
-			term.Write([]byte(fmt.Sprintf("The user tag '%s' is already in use. Try again:\n", userTag)))
-		} else {
-			break
-		}
-	}
-	//log.Printf(" 2 - userTag is: %s", userTag)
-	user := &chat.User{
-		Session:         session,
-		UserTag:         userTag,
-		CurrentRoomName: "General Room",
-		Term:            term,
-	}
-
-	return user, nil
+// ClearScreen clears the terminal screen in a cross-platform way.
+func ClearUserTerminal(term *term.Terminal) {
+	// ANSI escape code to clear the screen and reset the cursor
+	term.Write([]byte("\033[H\033[2J"))
+	term.Write([]byte("\033[3J")) // Clear scrollback buffer (optional)
 }
 
 // funtion to help populate a room for test purposes

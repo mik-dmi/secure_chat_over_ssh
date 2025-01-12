@@ -16,5 +16,4 @@
 
 
 
------> nEED TO MAKE THE MUX FOR THE CROUP CHAT WORK : 	MessageHistory []*UserMessage
-	messagesMu     sync.Mutex
+--------->>> DOOOO !!!!  If MessageHistory grows indefinitely, you may want to consider a size limit or implement batch processing for displaying older messages.

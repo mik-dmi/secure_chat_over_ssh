@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"secure_chat_over_ssh/chat"
-	"secure_chat_over_ssh/utils"
 	"sync"
 
 	"github.com/gliderlabs/ssh"
@@ -46,7 +45,7 @@ func (h *SSHHandler) HandleSSHSession(session ssh.Session) {
 
 	term.Write([]byte("Welcome to secure chat!!!\n What's your User Tag?\n"))
 
-	user, err := utils.NewUser(session, h.UsersManager, term)
+	user, err := chat.NewUser(session, h.UsersManager, term)
 
 	if err != nil {
 		fmt.Println(err)
@@ -72,13 +71,13 @@ func (h *SSHHandler) HandleSSHSession(session ssh.Session) {
 			user.CurrentRoomName = newRoom.RoomName
 			h.RoomManager.GetIntoAGroupChat(term, newRoom)
 			newRoom.WriteMessageToChat(term, user)
-
+			continue
 		case "JCOOO": // join a room
 			//fmt.Println("Local Addr : ", session.LocalAddr().String())
 			room = h.RoomManager.JoinRoom(user, term)
 			h.RoomManager.GetIntoAGroupChat(term, room)
 			room.WriteMessageToChat(term, user)
-
+			continue
 		default:
 			term.Write([]byte("try again"))
 		}
