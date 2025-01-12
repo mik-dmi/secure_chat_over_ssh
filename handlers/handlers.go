@@ -2,15 +2,13 @@ package handlers
 
 import (
 	"fmt"
-	"log"
-	"os"
 
 	"secure_chat_over_ssh/chat"
 	"secure_chat_over_ssh/utils"
 	"sync"
 
 	"github.com/gliderlabs/ssh"
-	"golang.org/x/term"
+	"golang.org/x/crypto/ssh/terminal"
 )
 
 type SSHHandler struct {
@@ -37,27 +35,31 @@ func (h *SSHHandler) HandleSSHSession(session ssh.Session) {
 	//populate a room to test
 	//utils.PopulateRoom(session, h.RoomManager)
 
-	oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
+	/*oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
 	if err != nil {
 		panic(err)
 	}
 	defer term.Restore(int(os.Stdin.Fd()), oldState)
 	term := term.NewTerminal(session, "> ")
+	*/
+	term := terminal.NewTerminal(session, "> ")
+
 	term.Write([]byte("Welcome to secure chat!!!\n What's your User Tag?\n"))
 
 	user, err := utils.NewUser(session, h.UsersManager, term)
 
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println(err)
+		return
 	}
 	fmt.Println("Print in  main : ", user.UserTag)
 
 	for {
-
 		term.Write([]byte("What do you want to join?\n- Chat Room (cmd: CR)\n- Create a One On One Room (cmd: CCOOO)\n- Join a One On One Room (cmd: JCOOO)\n"))
 		userChoice, err := term.ReadLine()
 		if err != nil {
-			log.Fatal(err)
+			fmt.Println(err)
+			return
 		}
 		switch userChoice {
 		case "CR":
@@ -69,13 +71,13 @@ func (h *SSHHandler) HandleSSHSession(session ssh.Session) {
 			newRoom := h.RoomManager.CreateRoom(user, term) // ------->> CHANGE --> rooms must be pass as a pointer
 			user.CurrentRoomName = newRoom.RoomName
 			h.RoomManager.GetIntoAGroupChat(term, newRoom)
-			h.RoomManager.WriteMessageToChat(term, newRoom, user.UserTag)
+			newRoom.WriteMessageToChat(term, user)
 
 		case "JCOOO": // join a room
 			//fmt.Println("Local Addr : ", session.LocalAddr().String())
 			room = h.RoomManager.JoinRoom(user, term)
 			h.RoomManager.GetIntoAGroupChat(term, room)
-			h.RoomManager.WriteMessageToChat(term, room, user.UserTag)
+			room.WriteMessageToChat(term, user)
 
 		default:
 			term.Write([]byte("try again"))

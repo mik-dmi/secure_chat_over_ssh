@@ -2,7 +2,6 @@ package utils
 
 import (
 	"fmt"
-	"log"
 	"secure_chat_over_ssh/chat"
 
 	"github.com/gliderlabs/ssh"
@@ -14,13 +13,12 @@ func NewUser(session ssh.Session, UsersManager *chat.UsersManager, term *term.Te
 	for {
 		term.Write([]byte("Enter a unique user tag:\n"))
 		line, err := term.ReadLine()
-
 		if err != nil {
 			err = fmt.Errorf("error reading user tag: %s", err)
 			return nil, err
 		}
 		userTag = line
-		log.Printf(" 1 - userTag is: %s", userTag)
+		//log.Printf(" 1 - userTag is: %s", userTag)
 
 		// Validate userTag (non-empty, alphanumeric, etc.)
 		if len(userTag) == 0 {
@@ -40,7 +38,7 @@ func NewUser(session ssh.Session, UsersManager *chat.UsersManager, term *term.Te
 			break
 		}
 	}
-	log.Printf(" 2 - userTag is: %s", userTag)
+	//log.Printf(" 2 - userTag is: %s", userTag)
 	user := &chat.User{
 		Session:         session,
 		UserTag:         userTag,

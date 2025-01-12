@@ -4,7 +4,7 @@ import (
 	"log"
 	"os"
 
-	"secure_chat_over_ssh/handlers.go"
+	"secure_chat_over_ssh/handlers"
 
 	"github.com/gliderlabs/ssh"
 	gossh "golang.org/x/crypto/ssh"
@@ -16,6 +16,7 @@ func main() {
 	server := &ssh.Server{ //defining ssh server
 		Addr:    sshPort,
 		Handler: handler.HandleSSHSession,
+
 		PublicKeyHandler: (func(ctx ssh.Context, key ssh.PublicKey) bool {
 			return true
 		}),
@@ -39,5 +40,7 @@ func main() {
 	//fmt.Println("Key in the main : ", privateKey)
 	server.AddHostKey(privateKey)
 	log.Printf("Starting SSH server on port %s", sshPort)
-	log.Fatal(server.ListenAndServe())
+	if err := server.ListenAndServe(); err != nil {
+		log.Fatalf("Failed to start SSH server: %v\n", err)
+	}
 }

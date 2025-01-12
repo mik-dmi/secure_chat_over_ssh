@@ -13,8 +13,9 @@ import (
 
 type Room struct {
 	RoomName       string
-	Users          []*User
+	Users          sync.Map //  key = string ( UserTag), value = *User
 	MessageHistory []*UserMessage
+	messagesMu     sync.Mutex
 }
 
 type RoomManager struct {
@@ -50,9 +51,6 @@ func (rm *RoomManager) GetRoomByID(id string) (*Room, bool) {
 	}
 	return value.(*Room), true
 }
-
-// GetRoom retrieves a Room pointer by its Name
-// GetRoomByName does a linear search of the sync.Map to find a room by its RoomName.
 func (rm *RoomManager) GetRoomByName(name string) (*Room, bool) {
 	var foundRoom *Room
 	var found bool
@@ -60,29 +58,23 @@ func (rm *RoomManager) GetRoomByName(name string) (*Room, bool) {
 	rm.Rooms.Range(func(key, value any) bool {
 		room, ok := value.(*Room)
 		if !ok {
-			// Continue iterating if for some reason the value isn’t a *Room
 			return true
 		}
 		if room.RoomName == name {
 			foundRoom = room
 			found = true
-			// Return false to break out of the Range loop
 			return false
 		}
-		// Continue iterating
 		return true
 	})
 
 	return foundRoom, found
 }
 
-// DeleteRoom removes a Room from the sync.Map by its ID.
 func (rm *RoomManager) DeleteRoom(id string) {
 	rm.Rooms.Delete(id)
 }
 
-// ListRooms returns a slice of all rooms.
-// sync.Map supports a Range method to iterate over entries.
 func (rm *RoomManager) ListRooms() []*Room {
 	rooms := make([]*Room, 0)
 	rm.Rooms.Range(func(key, value interface{}) bool {
@@ -100,7 +92,7 @@ func (rm *RoomManager) JoinRoom(user *User, term *term.Terminal) *Room {
 		idOfRoom, err := term.ReadLine()
 		if err != nil {
 			log.Printf("Error reading input: %v", err)
-			continue
+			return nil
 		}
 		room, ok := rm.GetRoomByID(idOfRoom)
 		if !ok {
@@ -108,7 +100,8 @@ func (rm *RoomManager) JoinRoom(user *User, term *term.Terminal) *Room {
 			continue
 		}
 		// Add the user to the room's user list
-		room.Users = append(room.Users, user)
+		room.Users.Store(user.UserTag, user)
+		user.CurrentRoomName = room.RoomName
 		msg := fmt.Sprintf("Room found! Welcome to %s room (Room ID: %s)\n", room.RoomName, idOfRoom)
 		term.Write([]byte(msg))
 		return room
@@ -120,7 +113,8 @@ func (rm *RoomManager) CreateRoom(user *User, term *term.Terminal) *Room { // --
 		term.Write([]byte("What is the name of the room you want to create?"))
 		nameOfRoom, err := term.ReadLine()
 		if err != nil {
-			term.Write([]byte("Wrong command, try gain:\n"))
+			term.Write([]byte("Error reading terminal\n"))
+			return nil
 		}
 		_, ok := rm.GetRoomByName(nameOfRoom)
 
@@ -130,15 +124,19 @@ func (rm *RoomManager) CreateRoom(user *User, term *term.Terminal) *Room { // --
 
 			RoomID, err := shortid.Generate()
 			if err != nil {
-				log.Fatal(err)
+				fmt.Println("Failed to generate a room id")
+				term.Write([]byte("Fail to generate a room id, try again\n"))
+				continue
 			}
 
 			room := &Room{
-				RoomName: nameOfRoom,
-
-				Users:          []*User{user},
-				MessageHistory: []*UserMessage{},
+				RoomName:       nameOfRoom,
+				Users:          sync.Map{},       // Initialize an empty sync.Map
+				MessageHistory: []*UserMessage{}, // Initialize an empty slice
 			}
+
+			// Add the initial user to the Users sync.Map
+			room.Users.Store(user.UserTag, user)
 
 			rm.Rooms.Store(RoomID, room)
 			return room
@@ -146,15 +144,26 @@ func (rm *RoomManager) CreateRoom(user *User, term *term.Terminal) *Room { // --
 	}
 }
 
+func (r *Room) ShowAllUserInRoom(userTerminal *term.Terminal) {
+	userTerminal.Write([]byte("List of all the Users in the room:\n"))
+	r.Users.Range(func(_, value interface{}) bool {
+		user := value.(*User)
+		userTerminal.Write([]byte(fmt.Sprintf("- %s\n", user.UserTag)))
+		return true
+	})
+}
+
 func (r *Room) UpdateRoomChat(userMessage string, userTag string) {
 	currentTime := time.Now()
 	formattedMessageTime := currentTime.Format("15:04")
-	for _, user := range r.Users {
+	r.Users.Range(func(_, value interface{}) bool {
+		user := value.(*User) // Type assert the value to *User
 		if user.UserTag != userTag {
 			user.Term.Write([]byte(fmt.Sprintf("%s at %s: %s\n", userTag, formattedMessageTime, userMessage)))
-			//add the message  to the chat history obj
+			// Add the message to the chat history object here
 		}
-	}
+		return true // Continue iteration
+	})
 
 	r.MessageHistory = append(r.MessageHistory, &UserMessage{
 		Message: userMessage,
@@ -163,19 +172,26 @@ func (r *Room) UpdateRoomChat(userMessage string, userTag string) {
 	})
 }
 
-func (rm *RoomManager) WriteMessageToChat(term *term.Terminal, room *Room, userTag string) {
+func (room *Room) WriteMessageToChat(term *term.Terminal, user *User) {
 
 	for {
 		userMessage, err := term.ReadLine()
 		if err != nil {
-			log.Fatal(err)
+			fmt.Println("Failed to generate a room id")
+			term.Write([]byte("Failed to read from terminal\n"))
+			return
 		}
 		if userMessage == "exit" {
-			term.Write([]byte("Left the room \n\n\n"))
+			term.Write([]byte("---- Left the room -------- \n\n\n"))
 			// STILL NEED to take out the user of the room map and so on
+			userMessage = fmt.Sprintf("user %s : left the room\n", user.UserTag)
+			room.Users.Delete(user.UserTag)
+			user.CurrentRoomName = ""
 		}
-		fmt.Println("Print: \n", userTag)
-		room.UpdateRoomChat(userMessage, userTag)
+		if userMessage == "show_all_chatroom_users" {
+			room.ShowAllUserInRoom(user.Term)
+		}
 
+		room.UpdateRoomChat(userMessage, user.UserTag)
 	}
 }
