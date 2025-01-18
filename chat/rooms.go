@@ -187,7 +187,7 @@ func (room *Room) WriteMessageToChat(term *term.Terminal, user *User) {
 			term.Write([]byte("---- Left the room -------- \n"))
 			utils.ClearUserTerminal(term)
 			// STILL NEED to take out the user of the room map and so on
-			userMessage = fmt.Sprintf("user %s : left the room\n", user.UserTag)
+			userMessage = fmt.Sprintf("user %s : left the room", user.UserTag)
 			room.Users.Delete(user.UserTag)
 
 			user.CurrentRoomName = ""

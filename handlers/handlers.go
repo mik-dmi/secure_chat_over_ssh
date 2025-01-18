@@ -4,10 +4,11 @@ import (
 	"fmt"
 
 	"secure_chat_over_ssh/chat"
+	"secure_chat_over_ssh/utils"
 	"sync"
 
 	"github.com/gliderlabs/ssh"
-	"golang.org/x/crypto/ssh/terminal"
+	"golang.org/x/term"
 )
 
 type SSHHandler struct {
@@ -41,7 +42,7 @@ func (h *SSHHandler) HandleSSHSession(session ssh.Session) {
 	defer term.Restore(int(os.Stdin.Fd()), oldState)
 	term := term.NewTerminal(session, "> ")
 	*/
-	term := terminal.NewTerminal(session, "> ")
+	term := term.NewTerminal(session, "> ")
 
 	term.Write([]byte("Welcome to secure chat!!!\n What's your User Tag?\n"))
 
@@ -51,20 +52,20 @@ func (h *SSHHandler) HandleSSHSession(session ssh.Session) {
 		fmt.Println(err)
 		return
 	}
-	fmt.Println("Print in  main : ", user.UserTag)
+	//fmt.Println("Print in  main : ", user.UserTag)
 
 	for {
-		term.Write([]byte("What do you want to join?\n- Chat Room (cmd: CR)\n- Create a One On One Room (cmd: CCOOO)\n- Join a One On One Room (cmd: JCOOO)\n"))
+		term.Write([]byte("Choose an option by typing the corresponding command (cmd):\n- Join General Chat Room (cmd: JGR)\n- Create A Chat Room (cmd: CR)\n- Join a Chat Room (cmd: JR)\n"))
 		userChoice, err := term.ReadLine()
 		if err != nil {
 			fmt.Println(err)
 			return
 		}
 		switch userChoice {
-		case "CR":
+		case "JGR":
 			term.Write([]byte("Joined a chat room"))
 			return
-		case "CCOOO": // creat one on one room
+		case "CR": // creat one on one room
 			//fmt.Println("Local Addr : ", session.LocalAddr().String())
 			//create new user
 			newRoom := h.RoomManager.CreateRoom(user, term) // ------->> CHANGE --> rooms must be pass as a pointer
@@ -72,14 +73,15 @@ func (h *SSHHandler) HandleSSHSession(session ssh.Session) {
 			h.RoomManager.GetIntoAGroupChat(term, newRoom)
 			newRoom.WriteMessageToChat(term, user)
 			continue
-		case "JCOOO": // join a room
+		case "JR": // join a room
 			//fmt.Println("Local Addr : ", session.LocalAddr().String())
 			room = h.RoomManager.JoinRoom(user, term)
 			h.RoomManager.GetIntoAGroupChat(term, room)
 			room.WriteMessageToChat(term, user)
 			continue
 		default:
-			term.Write([]byte("try again"))
+			utils.ClearUserTerminal(term)
+			term.Write([]byte("-> Command was invalid, try again!\n\n"))
 		}
 	}
 }

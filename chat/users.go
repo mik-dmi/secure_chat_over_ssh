@@ -2,6 +2,7 @@ package chat
 
 import (
 	"fmt"
+	"secure_chat_over_ssh/utils"
 
 	"sync"
 
@@ -50,7 +51,7 @@ func (rm *RoomManager) GetIntoAGroupChat(term *term.Terminal, room *Room) {
 
 	for _, message := range messages {
 
-		displayedMessage := fmt.Sprintf("%s at %s: %s\n ", message.UserTag, message.Time, message.Message)
+		displayedMessage := fmt.Sprintf("%s at %s: %s\n", message.UserTag, message.Time, message.Message)
 		term.Write([]byte(displayedMessage))
 	}
 }
@@ -85,6 +86,8 @@ func NewUser(session ssh.Session, UsersManager *UsersManager, term *term.Termina
 			break
 		}
 	}
+	utils.ClearUserTerminal(term)
+
 	//log.Printf(" 2 - userTag is: %s", userTag)
 	user := &User{
 		Session:         session,
