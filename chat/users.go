@@ -29,10 +29,10 @@ func NewUsersManager() *UsersManager {
 	return &UsersManager{}
 }
 func (rm *RoomManager) GetIntoAGroupChat(term *term.Terminal, room *Room) {
-	term.Write([]byte("\033[H\033[2J"))
+	utils.ClearUserTerminal(term)
 	roomID, ok := rm.GetRoomIDByRoomObject(room)
 	if !ok {
-		term.Write([]byte(fmt.Sprintf("Error getting room ID %v from room map ", roomID)))
+		term.Write([]byte(fmt.Sprintf("Error getting room ID %v from room map\n", roomID)))
 		return
 	}
 
@@ -56,7 +56,7 @@ func (rm *RoomManager) GetIntoAGroupChat(term *term.Terminal, room *Room) {
 	}
 }
 
-func NewUser(session ssh.Session, UsersManager *UsersManager, term *term.Terminal) (*User, error) {
+func (user *UsersManager) NewUser(session ssh.Session, term *term.Terminal) (*User, error) {
 	var userTag string
 	for {
 		term.Write([]byte("Enter a unique user tag:\n"))
@@ -68,18 +68,17 @@ func NewUser(session ssh.Session, UsersManager *UsersManager, term *term.Termina
 		userTag = line
 		//log.Printf(" 1 - userTag is: %s", userTag)
 
-		// Validate userTag (non-empty, alphanumeric, etc.)
 		if len(userTag) == 0 {
 			term.Write([]byte("User tag cannot be empty. Try again:\n"))
 			continue
 		}
-		if len(userTag) > 40 { // Example max length check
+		if len(userTag) > 40 {
 			term.Write([]byte("User tag must be 20 characters or less. Try again:\n"))
 			continue
 		}
 
 		// Check if userTag already exists
-		_, ok := UsersManager.Users.Load(userTag)
+		_, ok := user.Users.Load(userTag)
 		if ok {
 			term.Write([]byte(fmt.Sprintf("The user tag '%s' is already in use. Try again:\n", userTag)))
 		} else {
@@ -89,12 +88,15 @@ func NewUser(session ssh.Session, UsersManager *UsersManager, term *term.Termina
 	utils.ClearUserTerminal(term)
 
 	//log.Printf(" 2 - userTag is: %s", userTag)
-	user := &User{
+
+	newUser := &User{
 		Session:         session,
 		UserTag:         userTag,
 		CurrentRoomName: "General Room",
 		Term:            term,
 	}
+	user.Users.Store(userTag, newUser)
 
-	return user, nil
+	return newUser, nil
+
 }

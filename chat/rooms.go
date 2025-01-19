@@ -30,21 +30,18 @@ func NewRoomManager() *RoomManager {
 func (rm *RoomManager) GetRoomIDByRoomObject(room *Room) (string, bool) {
 	var roomID string
 	found := false
-
-	// Iterate over the sync.Map to find the matching room
 	rm.Rooms.Range(func(key, value interface{}) bool {
 		if value == room {
 			roomID = key.(string)
 			found = true
-			return false // Stop iteration
+			return false
 		}
-		return true // Continue iteration
+		return true
 	})
 
 	return roomID, found
 }
 
-// GetRoom retrieves a Room pointer by its ID.
 func (rm *RoomManager) GetRoomByID(id string) (*Room, bool) {
 	value, ok := rm.Rooms.Load(id)
 	if !ok {
@@ -82,7 +79,7 @@ func (rm *RoomManager) ListRooms() []*Room {
 		if room, ok := value.(*Room); ok {
 			rooms = append(rooms, room)
 		}
-		return true // keep iterating
+		return true
 	})
 	return rooms
 }
@@ -100,7 +97,6 @@ func (rm *RoomManager) JoinRoom(user *User, term *term.Terminal) *Room {
 			term.Write([]byte(fmt.Sprintf("The room ID %v does not exist\n", idOfRoom)))
 			continue
 		}
-		// Add the user to the room's user list
 		room.Users.Store(user.UserTag, user)
 		user.CurrentRoomName = room.RoomName
 		msg := fmt.Sprintf("Room found! Welcome to %s room (Room ID: %s)\n", room.RoomName, idOfRoom)
@@ -132,11 +128,10 @@ func (rm *RoomManager) CreateRoom(user *User, term *term.Terminal) *Room { // --
 
 			room := &Room{
 				RoomName:       nameOfRoom,
-				Users:          sync.Map{},       // Initialize an empty sync.Map
-				MessageHistory: []*UserMessage{}, // Initialize an empty slice
+				Users:          sync.Map{},
+				MessageHistory: []*UserMessage{},
 			}
 
-			// Add the initial user to the Users sync.Map
 			room.Users.Store(user.UserTag, user)
 
 			rm.Rooms.Store(RoomID, room)
@@ -155,15 +150,16 @@ func (r *Room) ShowAllUserInRoom(userTerminal *term.Terminal) {
 }
 
 func (r *Room) UpdateRoomChat(userMessage string, userTag string) {
+
 	currentTime := time.Now()
 	formattedMessageTime := currentTime.Format("15:04")
 	r.Users.Range(func(_, value interface{}) bool {
 		user := value.(*User) // Type assert the value to *User
+
 		if user.UserTag != userTag {
 			user.Term.Write([]byte(fmt.Sprintf("%s at %s: %s\n", userTag, formattedMessageTime, userMessage)))
-			// Add the message to the chat history object here
 		}
-		return true // Continue iteration
+		return true
 	})
 	r.messagesMu.Lock()
 	defer r.messagesMu.Unlock()

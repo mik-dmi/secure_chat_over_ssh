@@ -17,3 +17,19 @@
 
 
 --------->>> DOOOO !!!!  If MessageHistory grows indefinitely, you may want to consider a size limit or implement batch processing for displaying older messages.
+
+
+
+---> FIX this BuG that appears in the terminal after CRL + C:
+You just joinned: General Room (Room ID: 0000)
+General Room 
+Hereeee
+qwdscv at xx:xx: wdescv
+> wdascv 
+Hereeee
+Failed to read from terminal
+Choose an option by typing the corresponding command (cmd):
+- Join General Chat Room (cmd: JGR)
+- Create A Chat Room (cmd: CR)
+- Join a Chat Room (cmd: JR)
+> Connection to localhost closed.

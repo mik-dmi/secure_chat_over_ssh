@@ -5,7 +5,6 @@ import (
 
 	"secure_chat_over_ssh/chat"
 	"secure_chat_over_ssh/utils"
-	"sync"
 
 	"github.com/gliderlabs/ssh"
 	"golang.org/x/term"
@@ -14,25 +13,18 @@ import (
 type SSHHandler struct {
 	RoomManager  *chat.RoomManager
 	UsersManager *chat.UsersManager
+	Room         *chat.Room
 }
 
-func NewSSHHandler() *SSHHandler {
+func NewSSHHandler(room *chat.Room) *SSHHandler {
 	return &SSHHandler{
 		RoomManager:  chat.NewRoomManager(),
 		UsersManager: chat.NewUsersManager(),
+		Room:         room,
 	}
 }
 
-var AllUsersMap sync.Map
-
 func (h *SSHHandler) HandleSSHSession(session ssh.Session) {
-
-	room := &chat.Room{
-		RoomName: "General Room",
-	}
-	h.RoomManager.Rooms.Store("00000", room)
-
-	//populate a room to test
 	//utils.PopulateRoom(session, h.RoomManager)
 
 	/*oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
@@ -46,7 +38,7 @@ func (h *SSHHandler) HandleSSHSession(session ssh.Session) {
 
 	term.Write([]byte("Welcome to secure chat!!!\n What's your User Tag?\n"))
 
-	user, err := chat.NewUser(session, h.UsersManager, term)
+	user, err := h.UsersManager.NewUser(session, term)
 
 	if err != nil {
 		fmt.Println(err)
@@ -63,19 +55,26 @@ func (h *SSHHandler) HandleSSHSession(session ssh.Session) {
 		}
 		switch userChoice {
 		case "JGR":
-			term.Write([]byte("Joined a chat room"))
-			return
-		case "CR": // creat one on one room
+
+			h.Room.Users.Store(user.UserTag, user)
+			h.RoomManager.GetIntoAGroupChat(term, h.Room)
+			h.Room.Users.Range(func(key, value any) bool {
+				fmt.Printf("key: %v, value: %v\n", key, value)
+				return true
+			})
+
+			h.Room.WriteMessageToChat(term, user)
+			continue
+		case "CR":
 			//fmt.Println("Local Addr : ", session.LocalAddr().String())
-			//create new user
 			newRoom := h.RoomManager.CreateRoom(user, term) // ------->> CHANGE --> rooms must be pass as a pointer
 			user.CurrentRoomName = newRoom.RoomName
 			h.RoomManager.GetIntoAGroupChat(term, newRoom)
 			newRoom.WriteMessageToChat(term, user)
 			continue
-		case "JR": // join a room
+		case "JR":
 			//fmt.Println("Local Addr : ", session.LocalAddr().String())
-			room = h.RoomManager.JoinRoom(user, term)
+			room := h.RoomManager.JoinRoom(user, term)
 			h.RoomManager.GetIntoAGroupChat(term, room)
 			room.WriteMessageToChat(term, user)
 			continue

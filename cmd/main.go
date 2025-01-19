@@ -3,7 +3,9 @@ package main
 import (
 	"log"
 	"os"
+	"sync"
 
+	"secure_chat_over_ssh/chat"
 	"secure_chat_over_ssh/handlers"
 
 	"github.com/gliderlabs/ssh"
@@ -12,8 +14,16 @@ import (
 
 func main() {
 	sshPort := ":2222"
-	handler := handlers.NewSSHHandler()
-	server := &ssh.Server{ //defining ssh server
+	room := &chat.Room{
+		RoomName:       "General Room",
+		Users:          sync.Map{},
+		MessageHistory: []*chat.UserMessage{},
+	}
+
+	handler := handlers.NewSSHHandler(room)
+	handler.RoomManager.Rooms.Store("0000", room)
+
+	server := &ssh.Server{
 		Addr:    sshPort,
 		Handler: handler.HandleSSHSession,
 
