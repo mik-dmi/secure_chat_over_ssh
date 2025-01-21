@@ -68,13 +68,22 @@ func (h *SSHHandler) HandleSSHSession(session ssh.Session) {
 		case "CR":
 			//fmt.Println("Local Addr : ", session.LocalAddr().String())
 			newRoom := h.RoomManager.CreateRoom(user, term) // ------->> CHANGE --> rooms must be pass as a pointer
+			if newRoom == nil {                             // the user what to exit creating room option
+				continue
+			}
 			user.CurrentRoomName = newRoom.RoomName
 			h.RoomManager.GetIntoAGroupChat(term, newRoom)
-			newRoom.WriteMessageToChat(term, user)
+			err = newRoom.WriteMessageToChat(term, user)
+			if err != nil {
+				return //problem with the terminal
+			}
 			continue
 		case "JR":
 			//fmt.Println("Local Addr : ", session.LocalAddr().String())
 			room := h.RoomManager.JoinRoom(user, term)
+			if room == nil { // the user what to exit join room option
+				continue
+			}
 			h.RoomManager.GetIntoAGroupChat(term, room)
 			room.WriteMessageToChat(term, user)
 			continue

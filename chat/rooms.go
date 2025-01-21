@@ -92,6 +92,10 @@ func (rm *RoomManager) JoinRoom(user *User, term *term.Terminal) *Room {
 			log.Printf("Error reading input: %v", err)
 			return nil
 		}
+		if idOfRoom == "exit" {
+			utils.ClearUserTerminal(term)
+			return nil
+		}
 		room, ok := rm.GetRoomByID(idOfRoom)
 		if !ok {
 			term.Write([]byte(fmt.Sprintf("The room ID %v does not exist\n", idOfRoom)))
@@ -113,6 +117,12 @@ func (rm *RoomManager) CreateRoom(user *User, term *term.Terminal) *Room { // --
 			term.Write([]byte("Error reading terminal\n"))
 			return nil
 		}
+		//if user wants to go back to the initial menu
+		if nameOfRoom == "exit" {
+			utils.ClearUserTerminal(term)
+			return nil
+		}
+
 		_, ok := rm.GetRoomByName(nameOfRoom)
 
 		if ok {
@@ -170,14 +180,14 @@ func (r *Room) UpdateRoomChat(userMessage string, userTag string) {
 	})
 }
 
-func (room *Room) WriteMessageToChat(term *term.Terminal, user *User) {
+func (room *Room) WriteMessageToChat(term *term.Terminal, user *User) error {
 
 	for {
 		userMessage, err := term.ReadLine()
 		if err != nil {
 			fmt.Println("Failed to generate a room id")
-			term.Write([]byte("Failed to read from terminal\n"))
-			return
+			fmt.Println("Failed to read from terminal")
+			return fmt.Errorf("failed to read from terminal: %v", err)
 		}
 		if userMessage == "exit" {
 			term.Write([]byte("---- Left the room -------- \n"))
@@ -188,7 +198,7 @@ func (room *Room) WriteMessageToChat(term *term.Terminal, user *User) {
 
 			user.CurrentRoomName = ""
 			room.UpdateRoomChat(userMessage, user.UserTag)
-			return
+			return nil
 
 		}
 		if userMessage == "show_all_chatroom_users" {
