@@ -2,7 +2,7 @@ package utils
 
 import "golang.org/x/term"
 
-// ClearScreen clears the terminal screen in a cross-platform way.
+// ClearScreen clears the terminal screen
 func ClearUserTerminal(term *term.Terminal) {
 	// ANSI escape code to clear the screen and reset the cursor
 	term.Write([]byte("\033[H\033[2J"))

@@ -3,3 +3,8 @@
 private_key
 
 .env
+dockerkey
+
+dockerkey.pub
+
+.dockerignore

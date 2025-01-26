@@ -38,7 +38,7 @@ func main() {
 			return cfg
 		},
 	}
-	b, err := os.ReadFile("../keys/private_key")
+	b, err := os.ReadFile("../keys/dockerkey")
 	if err != nil {
 		log.Fatal(err)
 	}

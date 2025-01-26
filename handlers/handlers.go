@@ -24,6 +24,18 @@ func NewSSHHandler(room *chat.Room) *SSHHandler {
 	}
 }
 
+var banner = ` 
+ ____ ____  _   _   ____  _____ ____ _   _ ____  _____ 
+/ ___/ ___|| | | | / ___|| ____/ ___| | | |  _ \| ____|
+\___ \___ \| |_| | \___ \|  _|| |   | | | | |_) |  _|  
+ ___) |__) |  _  |  ___) | |__| |___| |_| |  _ <| |___ 
+|____/____/|_| |_| |____/|_____\____|\___/|_| \_\_____|
+ / ___| | | |  / \|_   _|                              
+| |   | |_| | / _ \ | |                                
+| |___|  _  |/ ___ \| |                                
+ \____|_| |_/_/   \_\_|                                
+`
+
 func (h *SSHHandler) HandleSSHSession(session ssh.Session) {
 	//utils.PopulateRoom(session, h.RoomManager)
 
@@ -36,7 +48,8 @@ func (h *SSHHandler) HandleSSHSession(session ssh.Session) {
 	*/
 	term := term.NewTerminal(session, "> ")
 
-	term.Write([]byte("Welcome to secure chat!!!\n What's your User Tag?\n"))
+	introductionText := fmt.Sprintf("Welcome to secure chat!!!%s\nWhat's your User Tag?\n", banner)
+	term.Write([]byte(introductionText))
 
 	user, err := h.UsersManager.NewUser(session, term)
 
