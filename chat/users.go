@@ -17,12 +17,12 @@ type UserMessage struct {
 }
 type User struct {
 	Session         ssh.Session
-	UserTag         string
+	UserTag         string //unique id
 	CurrentRoomName string
 	Term            *term.Terminal
 }
 type UsersManager struct {
-	Users sync.Map // key = string (Room ID), value = *Room
+	Users sync.Map // key = string (user tag), value = *User
 }
 
 func NewUsersManager() *UsersManager {

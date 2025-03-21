@@ -17,6 +17,7 @@ type Room struct {
 	Users          sync.Map //  key = string ( UserTag), value = *User
 	MessageHistory []*UserMessage
 	messagesMu     sync.Mutex
+	Owner          string // who created the room and the only allow to delete it
 }
 
 type RoomManager struct {
@@ -69,8 +70,10 @@ func (rm *RoomManager) GetRoomByName(name string) (*Room, bool) {
 	return foundRoom, found
 }
 
-func (rm *RoomManager) DeleteRoom(id string) {
+func (rm *RoomManager) DeleteRoom(id string, userCurrentRoom *string) {
 	rm.Rooms.Delete(id)
+	*userCurrentRoom = "General Room"
+
 }
 
 func (rm *RoomManager) ListRooms() []*Room {
@@ -140,6 +143,7 @@ func (rm *RoomManager) CreateRoom(user *User, term *term.Terminal) *Room { // --
 				RoomName:       nameOfRoom,
 				Users:          sync.Map{},
 				MessageHistory: []*UserMessage{},
+				Owner:          user.UserTag,
 			}
 
 			room.Users.Store(user.UserTag, user)
@@ -180,7 +184,7 @@ func (r *Room) UpdateRoomChat(userMessage string, userTag string) {
 	})
 }
 
-func (room *Room) WriteMessageToChat(term *term.Terminal, user *User) error {
+func (rm *RoomManager) WriteMessageToChat(term *term.Terminal, user *User, room *Room) error {
 
 	for {
 		userMessage, err := term.ReadLine()
@@ -198,6 +202,21 @@ func (room *Room) WriteMessageToChat(term *term.Terminal, user *User) error {
 
 			user.CurrentRoomName = ""
 			room.UpdateRoomChat(userMessage, user.UserTag)
+			return nil
+
+		}
+		if userMessage == "show_all_chatroom_users" {
+			room.ShowAllUserInRoom(user.Term)
+			continue
+		}
+		if userMessage == "delete_room" {
+			if user.UserTag == room.Owner {
+				rm.DeleteRoom(room.RoomName, &user.CurrentRoomName)
+			} else {
+				fmt.Println("Can not delete room, you are not the owner")
+				continue
+			}
+			fmt.Println("Debug: userCurrent room after delete: ", user.CurrentRoomName)
 			return nil
 
 		}

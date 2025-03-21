@@ -8,3 +8,5 @@ dockerkey
 dockerkey.pub
 
 .dockerignore
+
+improvements.md

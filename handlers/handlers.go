@@ -76,7 +76,7 @@ func (h *SSHHandler) HandleSSHSession(session ssh.Session) {
 				return true
 			})
 
-			h.Room.WriteMessageToChat(term, user)
+			h.RoomManager.WriteMessageToChat(term, user, h.Room)
 			continue
 		case "CR":
 			//fmt.Println("Local Addr : ", session.LocalAddr().String())
@@ -86,7 +86,7 @@ func (h *SSHHandler) HandleSSHSession(session ssh.Session) {
 			}
 			user.CurrentRoomName = newRoom.RoomName
 			h.RoomManager.GetIntoAGroupChat(term, newRoom)
-			err = newRoom.WriteMessageToChat(term, user)
+			err = h.RoomManager.WriteMessageToChat(term, user, newRoom)
 			if err != nil {
 				return //problem with the terminal
 			}
@@ -98,7 +98,7 @@ func (h *SSHHandler) HandleSSHSession(session ssh.Session) {
 				continue
 			}
 			h.RoomManager.GetIntoAGroupChat(term, room)
-			room.WriteMessageToChat(term, user)
+			h.RoomManager.WriteMessageToChat(term, user, room)
 			continue
 		default:
 			utils.ClearUserTerminal(term)

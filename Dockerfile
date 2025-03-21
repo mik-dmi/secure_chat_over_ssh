@@ -25,10 +25,10 @@ RUN apt-get update && apt-get install -y openssh-server
 # Copy over private/public keys for SSH (if needed)
 WORKDIR /app
 RUN mkdir /keys
-COPY dockerkey /keys
+COPY ./keys/dockerkey /keys
 
 # Setup authorized keys for SSH (for Go SSH server)
-COPY ./dockerkey.pub /root/.ssh/authorized_keys
+COPY ./keys/dockerkey.pub /root/.ssh/authorized_keys
 RUN chmod 700 /root/.ssh && chmod 600 /root/.ssh/authorized_keys
 
 # Copy the compiled Go application from the builder stage
