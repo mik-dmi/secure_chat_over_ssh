@@ -6,7 +6,6 @@ import (
 	"sync"
 
 	"secure_chat_over_ssh/chat"
-	"secure_chat_over_ssh/handlers"
 
 	"github.com/gliderlabs/ssh"
 	gossh "golang.org/x/crypto/ssh"
@@ -15,13 +14,20 @@ import (
 func main() {
 	sshPort := ":2222"
 	room := &chat.Room{
-		RoomName:       "General Room",
+		RoomName:       "General Room", // is waiting room
+		Users:          sync.Map{},
+		MessageHistory: []*chat.UserMessage{},
+	}
+	waitingRoom := &chat.Room{
+		RoomName:       "Waiting room", // is waiting room
 		Users:          sync.Map{},
 		MessageHistory: []*chat.UserMessage{},
 	}
 
-	handler := handlers.NewSSHHandler(room)
-	handler.RoomManager.Rooms.Store("0000", room)
+	handler := chat.NewSSHHandler(room)           // maybe delete later
+	handler.RoomManager.Rooms.Store("0001", room) // rm id ---> 0001
+
+	handler.RoomManager.Rooms.Store("0000", waitingRoom) // rm id ---> 0001
 
 	server := &ssh.Server{
 		Addr:    sshPort,

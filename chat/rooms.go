@@ -3,6 +3,7 @@ package chat
 import (
 	"fmt"
 	"log"
+
 	"secure_chat_over_ssh/utils"
 
 	"sync"
@@ -70,10 +71,29 @@ func (rm *RoomManager) GetRoomByName(name string) (*Room, bool) {
 	return foundRoom, found
 }
 
-func (rm *RoomManager) DeleteRoom(id string, userCurrentRoom *string) {
-	rm.Rooms.Delete(id)
-	*userCurrentRoom = "General Room"
+func (rm *RoomManager) DeleteRoom(room *Room, h *SSHHandler) {
+	rm.Rooms.Delete(room.RoomName)
+	//find room object related to the "General Room"
+	waitingRoom, ok := rm.GetRoomByID("0000")
+	if !ok {
+		log.Panicln("error getting Waiting Room room object from room manager")
+	}
 
+	room.Users.Range(func(key, value interface{}) bool {
+		if u, ok := value.(*User); ok {
+
+			utils.ClearUserTerminal(u.Term)
+			u.CurrentRoomName = "Waiting room"
+			waitingRoom.Users.Store(u.UserTag, u)
+			u.Term.Write([]byte("---- Room was deleted --------\n"))
+			if u.UserTag != room.Owner {
+				u.Term.Write([]byte("> Press Enter To Continue\n"))
+
+			}
+		}
+
+		return true
+	})
 }
 
 func (rm *RoomManager) ListRooms() []*Room {
@@ -87,55 +107,69 @@ func (rm *RoomManager) ListRooms() []*Room {
 	return rooms
 }
 
-func (rm *RoomManager) JoinRoom(user *User, term *term.Terminal) *Room {
+func (rm *RoomManager) JoinRoom(user *User, term *term.Terminal) (string, *Room) {
 	for {
 		term.Write([]byte("What's the ID of the room you want to join?\n"))
-		idOfRoom, err := term.ReadLine()
+		roomManagerMapID, err := term.ReadLine()
 		if err != nil {
 			log.Printf("Error reading input: %v", err)
-			return nil
+			return "", nil
 		}
-		if idOfRoom == "exit" {
+		if roomManagerMapID == "exit" {
 			utils.ClearUserTerminal(term)
-			return nil
+			return "", nil
 		}
-		room, ok := rm.GetRoomByID(idOfRoom)
+		room, ok := rm.GetRoomByID(roomManagerMapID)
 		if !ok {
-			term.Write([]byte(fmt.Sprintf("The room ID %v does not exist\n", idOfRoom)))
+			term.Write([]byte(fmt.Sprintf("The room ID %v does not exist\n", roomManagerMapID)))
 			continue
 		}
-		room.Users.Store(user.UserTag, user)
 		user.CurrentRoomName = room.RoomName
-		msg := fmt.Sprintf("Room found! Welcome to %s room (Room ID: %s)\n", room.RoomName, idOfRoom)
+		room.Users.Store(user.UserTag, user)
+
+		msg := fmt.Sprintf("Room found! Welcome to %s room (Room ID: %s)\n", room.RoomName, roomManagerMapID)
 		term.Write([]byte(msg))
-		return room
+		return roomManagerMapID, room
 	}
 }
 
-func (rm *RoomManager) CreateRoom(user *User, term *term.Terminal) *Room { // --> CHANGE rooms []Room   --< pass as pointer cause its needed to add something to the slice
+/*
+func (rm *RoomManager) AddUserToGeneralRoom(user *User, room *Room) error {
+
+	room.Users.Store(user.UserTag, user)
+	user.CurrentRoomName = "General Room"
+	msg := fmt.Sprintf("Welcome to %s room\n", room.RoomName)
+	user.Term.Write([]byte(msg))
+	rm.GetIntoAGroupChat(user.Term, room)
+
+	return nil
+}
+*/
+
+func (rm *RoomManager) CreateRoom(user *User) (*Room, string) { // --> CHANGE rooms []Room   --< pass as pointer cause its needed to add something to the slice
 	for {
-		term.Write([]byte("What is the name of the room you want to create?"))
-		nameOfRoom, err := term.ReadLine()
+		user.Term.Write([]byte("What is the name of the room you want to create?"))
+		nameOfRoom, err := user.Term.ReadLine()
 		if err != nil {
-			term.Write([]byte("Error reading terminal\n"))
-			return nil
+			user.Term.Write([]byte("Error reading terminal\n"))
+			return nil, ""
 		}
 		//if user wants to go back to the initial menu
 		if nameOfRoom == "exit" {
-			utils.ClearUserTerminal(term)
-			return nil
+			utils.ClearUserTerminal(user.Term)
+			return nil, ""
 		}
 
 		_, ok := rm.GetRoomByName(nameOfRoom)
 
 		if ok {
-			term.Write([]byte("Fail creating room, a room that name already exists\n"))
+			user.Term.Write([]byte("Fail creating room, a room that name already exists\n"))
 		} else {
 
-			RoomID, err := shortid.Generate()
+			roomManagerMapID, err := shortid.Generate()
 			if err != nil {
 				fmt.Println("Failed to generate a room id")
-				term.Write([]byte("Fail to generate a room id, try again\n"))
+				user.Term.Write([]byte("Fail to generate a room id, try again\n"))
 				continue
 			}
 
@@ -148,8 +182,8 @@ func (rm *RoomManager) CreateRoom(user *User, term *term.Terminal) *Room { // --
 
 			room.Users.Store(user.UserTag, user)
 
-			rm.Rooms.Store(RoomID, room)
-			return room
+			rm.Rooms.Store(roomManagerMapID, room)
+			return room, roomManagerMapID
 		}
 	}
 }
@@ -184,23 +218,27 @@ func (r *Room) UpdateRoomChat(userMessage string, userTag string) {
 	})
 }
 
-func (rm *RoomManager) WriteMessageToChat(term *term.Terminal, user *User, room *Room) error {
+func (rm *RoomManager) WriteMessageToChat(user *User, roomManagerMapID string, h *SSHHandler) error {
+
+	room, ok := rm.GetRoomByID(roomManagerMapID)
+	if !ok {
+		log.Panicln("error getting General Room room object from room manager (WriteMessageToChat);  ", roomManagerMapID)
+	}
 
 	for {
-		userMessage, err := term.ReadLine()
+		userMessage, err := user.Term.ReadLine()
 		if err != nil {
-			fmt.Println("Failed to generate a room id")
 			fmt.Println("Failed to read from terminal")
 			return fmt.Errorf("failed to read from terminal: %v", err)
 		}
 		if userMessage == "exit" {
-			term.Write([]byte("---- Left the room -------- \n"))
-			utils.ClearUserTerminal(term)
+			user.Term.Write([]byte("---- Left the room -------- \n"))
+			utils.ClearUserTerminal(user.Term)
 			// STILL NEED to take out the user of the room map and so on
 			userMessage = fmt.Sprintf("user %s : left the room", user.UserTag)
 			room.Users.Delete(user.UserTag)
 
-			user.CurrentRoomName = ""
+			user.CurrentRoomName = "Waiting room"
 			room.UpdateRoomChat(userMessage, user.UserTag)
 			return nil
 
@@ -211,18 +249,38 @@ func (rm *RoomManager) WriteMessageToChat(term *term.Terminal, user *User, room 
 		}
 		if userMessage == "delete_room" {
 			if user.UserTag == room.Owner {
-				rm.DeleteRoom(room.RoomName, &user.CurrentRoomName)
+				// need to run throught all the users and change their currentRoom
+				rm.DeleteRoom(room, h)
+
 			} else {
-				fmt.Println("Can not delete room, you are not the owner")
+				user.Term.Write([]byte("Can not delete room, you are not the owner\n"))
+
 				continue
 			}
 			fmt.Println("Debug: userCurrent room after delete: ", user.CurrentRoomName)
 			return nil
 
 		}
-		if userMessage == "show_all_chatroom_users" {
-			room.ShowAllUserInRoom(user.Term)
-			continue
+
+		//working on this is a meesconst
+		/*roomFromManager, ok := h.RoomManager.Rooms.Load(room.RoomName)
+		if !ok {
+			// Room not found
+			return fmt.Errorf("error finding room in RoomManager")
+		}
+
+		roomFromManagerFinal, ok := roomFromManager.(*Room)
+		if !ok {
+			// The value stored is not of type *Room
+			return fmt.Errorf("error asserting value of  RoomManager")
+		}
+
+		if roomFromManagerFinal.RoomName == "" {
+			return nil
+		}*/
+
+		if user.CurrentRoomName == "Waiting room" {
+			return nil
 		}
 
 		room.UpdateRoomChat(userMessage, user.UserTag)

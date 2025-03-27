@@ -30,13 +30,13 @@ func NewUsersManager() *UsersManager {
 }
 func (rm *RoomManager) GetIntoAGroupChat(term *term.Terminal, room *Room) {
 	utils.ClearUserTerminal(term)
-	roomID, ok := rm.GetRoomIDByRoomObject(room)
+	roomManagerMapID, ok := rm.GetRoomIDByRoomObject(room)
 	if !ok {
-		term.Write([]byte(fmt.Sprintf("Error getting room ID %v from room map\n", roomID)))
+		term.Write([]byte(fmt.Sprintf("Error getting room ID %v from room map\n", roomManagerMapID)))
 		return
 	}
 
-	term.Write([]byte(fmt.Sprintf("You just joinned: %s (Room ID: %s)", room.RoomName, roomID)))
+	term.Write([]byte(fmt.Sprintf("You just joinned: %s (Room ID: %s)", room.RoomName, roomManagerMapID)))
 	term.Write([]byte("\n"))
 	term.Write([]byte(fmt.Sprintf("%s \n", room.RoomName)))
 
@@ -54,6 +54,7 @@ func (rm *RoomManager) GetIntoAGroupChat(term *term.Terminal, room *Room) {
 		displayedMessage := fmt.Sprintf("%s at %s: %s\n", message.UserTag, message.Time, message.Message)
 		term.Write([]byte(displayedMessage))
 	}
+
 }
 
 func (user *UsersManager) NewUser(session ssh.Session, term *term.Terminal) (*User, error) {
@@ -92,7 +93,7 @@ func (user *UsersManager) NewUser(session ssh.Session, term *term.Terminal) (*Us
 	newUser := &User{
 		Session:         session,
 		UserTag:         userTag,
-		CurrentRoomName: "General Room",
+		CurrentRoomName: "Waiting room",
 		Term:            term,
 	}
 	user.Users.Store(userTag, newUser)
